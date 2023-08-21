@@ -45,8 +45,14 @@ Before you begin, ensure you have met the following requirements:
    cd bbears-renewable-energy-marketplace
 
 1. Install project dependencies:
-   ```sh
-   npm install
+   Before you can run this project, make sure you have Node.js installed. We recommend using Node.js version 18.17.1 or higher.
+
+![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.17.1-brightgreen.svg)
+
+To install project dependencies, run:
+
+```bash
+npm install
 
  ### Usage
   
