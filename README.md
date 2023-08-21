@@ -45,6 +45,7 @@ Before you begin, ensure you have met the following requirements:
    cd bbears-renewable-energy-marketplace
 
 1. Install project dependencies:
+   ```sh
    npm install
 
  ### Usage
