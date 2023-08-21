@@ -88,6 +88,3 @@ Contributions are welcome! Feel free to open issues, submit pull requests, or su
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-Make sure to replace the placeholders (e.g., `your-username`, `<network-name>`, etc.) with your actual information and details about your project. You can also add more sections or customize it further to suit your project's needs.
-
-Once you've created the README.md file in your repository with this content, it will provide clear instructions and information about your BBears Renewable Energy Marketplace project for anyone who visits your GitHub repository.
