@@ -1,0 +1,49 @@
+# BBears Renewable Energy Marketplace Makefile
+
+# Define the default target
+.DEFAULT_GOAL := help
+
+# Define variables
+TRUFFLE := npx truffle
+DEV_SERVER := npm run dev
+
+# Define targets and their commands
+.PHONY: help
+help:
+	@echo "BBears Renewable Energy Marketplace Makefile"
+	@echo "-------------------------------------------"
+	@echo "Available targets:"
+	@echo "  compile        : Compile the smart contracts"
+	@echo "  migrate-dev    : Migrate the contracts to the development environment"
+	@echo "  dev            : Start the development server"
+	@echo "  deploy-dev     : Deploy the contracts to a development network"
+	@echo "  deploy-mainnet : Deploy the contracts to the Ethereum mainnet"
+	@echo "  clean          : Clean build artifacts"
+	@echo "  help           : Show this help message"
+
+.PHONY: compile
+compile:
+	$(TRUFFLE) compile
+
+.PHONY: migrate-dev
+migrate-dev:
+	$(TRUFFLE) migrate --reset --network development
+
+.PHONY: dev
+dev:
+	$(DEV_SERVER)
+
+.PHONY: deploy-dev
+deploy-dev:
+	$(TRUFFLE) migrate --reset --network <your-development-network-name>
+
+.PHONY: deploy-mainnet
+deploy-mainnet:
+	$(TRUFFLE) migrate --reset --network mainnet
+
+.PHONY: clean
+clean:
+	$(TRUFFLE) migrate --reset --network development
+	@rm -rf build
+
+# Usage: make <target>
