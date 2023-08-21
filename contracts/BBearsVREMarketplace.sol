@@ -51,12 +51,12 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     }
 
     modifier onlyAdmin() {
-        require(hasRole(ADMIN_ROLE, msg.sender), "Only admins can call this function");
+        require(hasRole(ADMIN_ROLE, msg.sender), "BBVRE: Only admins can call this function");
         _;
     }
 
     modifier onlyProducer() {
-        require(hasRole(PRODUCER_ROLE, msg.sender), "Only producers can call this function");
+        require(hasRole(PRODUCER_ROLE, msg.sender), "BBVRE: Only producers can call this function");
         _;
     }
 
@@ -83,13 +83,13 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     }
 
     function addAIPrediction(uint256 tokenId, uint256 timestamp, uint256 predictionValue) external onlyAdmin {
-        require(_exists(tokenId), "Token ID does not exist");
+        require(_exists(tokenId), "BBVRE: Token ID does not exist");
         aiPredictions.push(AIPrediction({ tokenId: tokenId, timestamp: timestamp, predictionValue: predictionValue }));
         emit AIPredictionAdded(tokenId, timestamp, predictionValue);
     }
 
     function payTax(uint256 tokenId, uint256 amount) external {
-        require(_exists(tokenId), "Token ID does not exist");
+        require(_exists(tokenId), "BBVRE: Token ID does not exist");
         address payer = msg.sender;
         // Perform tax payment logic
         emit TaxPaid(payer, tokenId, amount);
@@ -100,7 +100,7 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     }
 
     function withdrawFromVault(uint256 amount) external {
-        require(vaultBalances[msg.sender] >= amount, "Insufficient funds in the vault");
+        require(vaultBalances[msg.sender] >= amount, "BBVRE: Insufficient funds in the vault");
         vaultBalances[msg.sender] -= uint128(amount);
         payable(msg.sender).transfer(amount);
         emit WithdrawnFromVault(msg.sender, amount);
@@ -115,17 +115,17 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     }
 
     function listNFTForSale(uint256 tokenId, uint256 price) external onlyProducer {
-        require(_exists(tokenId), "Token ID does not exist");
-        require(ownerOf(tokenId) == msg.sender, "Only the owner can list the NFT for sale");
+        require(_exists(tokenId), "BBVRE: Token ID does not exist");
+        require(ownerOf(tokenId) == msg.sender, "BBVRE: Only the owner can list the NFT for sale");
         renewableEnergyNFTs[tokenId].isListed = true;
         renewableEnergyNFTs[tokenId].price = price;
         emit NFTListed(tokenId, price);
     }
 
     function purchaseNFT(uint256 tokenId) external payable {
-        require(_exists(tokenId), "Token ID does not exist");
-        require(renewableEnergyNFTs[tokenId].isListed, "NFT is not listed for sale");
-        require(msg.value >= renewableEnergyNFTs[tokenId].price, "Insufficient payment");
+        require(_exists(tokenId), "BBVRE: Token ID does not exist");
+        require(renewableEnergyNFTs[tokenId].isListed, "BBVRE: NFT is not listed for sale");
+        require(msg.value >= renewableEnergyNFTs[tokenId].price, "BBVRE: Insufficient payment");
 
         address seller = ownerOf(tokenId);
         address buyer = msg.sender;
