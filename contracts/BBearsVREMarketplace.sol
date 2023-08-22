@@ -43,8 +43,7 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
 
     mapping(address => uint128) public vaultBalances;
 
-    constructor(string memory baseURI) ERC721(_name, _symbol) {
-        _baseTokenURI = baseURI;
+    constructor() ERC721(_name, _symbol) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
         _setupRole(PRODUCER_ROLE, msg.sender);
@@ -90,9 +89,8 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
 
     function payTax(uint256 tokenId, uint256 amount) external {
         require(_exists(tokenId), "BBVRE: Token ID does not exist");
-        address payer = msg.sender;
         // Perform tax payment logic
-        emit TaxPaid(payer, tokenId, amount);
+        emit TaxPaid(msg.sender, tokenId, amount);
     }
 
     function depositToVault() external payable {
@@ -102,7 +100,10 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     function withdrawFromVault(uint256 amount) external {
         require(vaultBalances[msg.sender] >= amount, "BBVRE: Insufficient funds in the vault");
         vaultBalances[msg.sender] -= uint128(amount);
-        payable(msg.sender).transfer(amount);
+
+        (bool success, ) = payable(msg.sender).call{value: amount, gas: gasleft()}("");
+        require(success, "BBVRE: Withdrawal failed");
+
         emit WithdrawnFromVault(msg.sender, amount);
     }
 
@@ -138,8 +139,8 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
         renewableEnergyNFTs[tokenId].isListed = false;
         renewableEnergyNFTs[tokenId].price = 0;
 
-        // Transfer payment to seller
-        payable(seller).transfer(price);
+        (bool success, ) = payable(seller).call{value: price, gas: gasleft()}("");
+        require(success, "BBVRE: Payment failed");
 
         emit NFTPurchased(tokenId, buyer, seller, price);
     }
