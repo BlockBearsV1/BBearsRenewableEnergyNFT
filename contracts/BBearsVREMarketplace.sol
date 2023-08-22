@@ -66,6 +66,11 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
         uint256 carbonEmissions,
         uint256 energyEfficiency
     ) external onlyProducer {
+        require(bytes(energyType).length > 0, "BBVRE: Energy type cannot be empty");
+        require(productionDate > 0, "BBVRE: Invalid production date");
+        require(carbonEmissions > 0, "BBVRE: Invalid carbon emissions");
+        require(energyEfficiency > 0, "BBVRE: Invalid energy efficiency");
+
         uint256 tokenId = renewableEnergyNFTs.length;
         renewableEnergyNFTs.push(
             RenewableEnergyNFT({
@@ -78,6 +83,7 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
             })
         );
         _safeMint(to, tokenId);
+
         emit NFTMinted(tokenId, energyType, productionDate);
     }
 
@@ -89,7 +95,6 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
 
     function payTax(uint256 tokenId, uint256 amount) external {
         require(_exists(tokenId), "BBVRE: Token ID does not exist");
-        // Perform tax payment logic
         emit TaxPaid(msg.sender, tokenId, amount);
     }
 
@@ -100,10 +105,8 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     function withdrawFromVault(uint256 amount) external {
         require(vaultBalances[msg.sender] >= amount, "BBVRE: Insufficient funds in the vault");
         vaultBalances[msg.sender] -= uint128(amount);
-
         (bool success, ) = payable(msg.sender).call{value: amount, gas: gasleft()}("");
         require(success, "BBVRE: Withdrawal failed");
-
         emit WithdrawnFromVault(msg.sender, amount);
     }
 
