@@ -3,17 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
-    using SafeMath for uint256;
-
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant PRODUCER_ROLE = keccak256("PRODUCER_ROLE");
 
-    string private _name = "BBearsVRenewableEnergyNFT"; // Updated collection name
+    string private _name = "BBearsVREMarketplace";
     string private _symbol = "BBVRE";
-    string private _baseTokenURI = "https://nft.b-bears.com/"; // Updated base URI
+    string private _baseTokenURI = "https://nft.b-bears.com/";
 
     struct RenewableEnergyNFT {
         string energyType;
@@ -25,13 +22,6 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     }
 
     RenewableEnergyNFT[] public renewableEnergyNFTs;
-
-    event NFTMinted(uint256 indexed tokenId, string energyType, uint256 productionDate);
-    event AIPredictionAdded(uint256 indexed tokenId, uint256 timestamp, uint256 predictionValue);
-    event TaxPaid(address payer, uint256 tokenId, uint256 amount);
-    event WithdrawnFromVault(address user, uint256 amount);
-    event NFTListed(uint256 indexed tokenId, uint256 price);
-    event NFTPurchased(uint256 indexed tokenId, address buyer, address seller, uint256 price);
 
     struct AIPrediction {
         uint256 tokenId;
@@ -50,12 +40,12 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     }
 
     modifier onlyAdmin() {
-        require(hasRole(ADMIN_ROLE, msg.sender), "BBVRE: Only admins can call this function");
+        require(hasRole(ADMIN_ROLE, msg.sender), "Only admins can call this function");
         _;
     }
 
     modifier onlyProducer() {
-        require(hasRole(PRODUCER_ROLE, msg.sender), "BBVRE: Only producers can call this function");
+        require(hasRole(PRODUCER_ROLE, msg.sender), "Only producers can call this function");
         _;
     }
 
@@ -66,11 +56,6 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
         uint256 carbonEmissions,
         uint256 energyEfficiency
     ) external onlyProducer {
-        require(bytes(energyType).length > 0, "BBVRE: Energy type cannot be empty");
-        require(productionDate > 0, "BBVRE: Invalid production date");
-        require(carbonEmissions > 0, "BBVRE: Invalid carbon emissions");
-        require(energyEfficiency > 0, "BBVRE: Invalid energy efficiency");
-
         uint256 tokenId = renewableEnergyNFTs.length;
         renewableEnergyNFTs.push(
             RenewableEnergyNFT({
@@ -83,19 +68,11 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
             })
         );
         _safeMint(to, tokenId);
-
-        emit NFTMinted(tokenId, energyType, productionDate);
     }
 
     function addAIPrediction(uint256 tokenId, uint256 timestamp, uint256 predictionValue) external onlyAdmin {
-        require(_exists(tokenId), "BBVRE: Token ID does not exist");
+        require(_exists(tokenId), "Token ID does not exist");
         aiPredictions.push(AIPrediction({ tokenId: tokenId, timestamp: timestamp, predictionValue: predictionValue }));
-        emit AIPredictionAdded(tokenId, timestamp, predictionValue);
-    }
-
-    function payTax(uint256 tokenId, uint256 amount) external {
-        require(_exists(tokenId), "BBVRE: Token ID does not exist");
-        emit TaxPaid(msg.sender, tokenId, amount);
     }
 
     function depositToVault() external payable {
@@ -103,11 +80,9 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
     }
 
     function withdrawFromVault(uint256 amount) external {
-        require(vaultBalances[msg.sender] >= amount, "BBVRE: Insufficient funds in the vault");
+        require(vaultBalances[msg.sender] >= amount, "Insufficient funds in the vault");
         vaultBalances[msg.sender] -= uint128(amount);
-        (bool success, ) = payable(msg.sender).call{value: amount, gas: gasleft()}("");
-        require(success, "BBVRE: Withdrawal failed");
-        emit WithdrawnFromVault(msg.sender, amount);
+        payable(msg.sender).transfer(amount);
     }
 
     function _baseURI() internal view virtual override returns (string memory) {
@@ -116,39 +91,5 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
 
     function setBaseURI(string memory baseURI) external onlyAdmin {
         _baseTokenURI = baseURI;
-    }
-
-    function listNFTForSale(uint256 tokenId, uint256 price) external onlyProducer {
-        require(_exists(tokenId), "BBVRE: Token ID does not exist");
-        require(ownerOf(tokenId) == msg.sender, "BBVRE: Only the owner can list the NFT for sale");
-        renewableEnergyNFTs[tokenId].isListed = true;
-        renewableEnergyNFTs[tokenId].price = price;
-        emit NFTListed(tokenId, price);
-    }
-
-    function purchaseNFT(uint256 tokenId) external payable {
-        require(_exists(tokenId), "BBVRE: Token ID does not exist");
-        require(renewableEnergyNFTs[tokenId].isListed, "BBVRE: NFT is not listed for sale");
-        require(msg.value >= renewableEnergyNFTs[tokenId].price, "BBVRE: Insufficient payment");
-
-        address seller = ownerOf(tokenId);
-        address buyer = msg.sender;
-        uint256 price = renewableEnergyNFTs[tokenId].price;
-
-        // Transfer ownership
-        _transfer(seller, buyer, tokenId);
-
-        // Update NFT status
-        renewableEnergyNFTs[tokenId].isListed = false;
-        renewableEnergyNFTs[tokenId].price = 0;
-
-        (bool success, ) = payable(seller).call{value: price, gas: gasleft()}("");
-        require(success, "BBVRE: Payment failed");
-
-        emit NFTPurchased(tokenId, buyer, seller, price);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable) returns (bool) {
-        return super.supportsInterface(interfaceId);
     }
 }
