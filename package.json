@@ -1,0 +1,18 @@
+{
+  "name": "bbearsvremarketplace",
+  "version": "1.0.0",
+  "description": "Welcome to the BBears Renewable Energy Marketplace project! This decentralized marketplace allows users to mint and trade Renewable Energy NFTs (Non-Fungible Tokens) representing various types of renewable energy sources.",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.5.0"
+  }
+}
