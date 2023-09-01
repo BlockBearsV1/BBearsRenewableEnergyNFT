@@ -43,8 +43,8 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
 
     mapping(address => uint128) public vaultBalances;
 
-    constructor(string memory baseURI) ERC721(_name, _symbol) {
-        _baseTokenURI = baseURI;
+    constructor() ERC721(_name, _symbol) {
+        _baseTokenURI = "";
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
         _setupRole(PRODUCER_ROLE, msg.sender);
@@ -60,52 +60,8 @@ contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
         _;
     }
 
-    function mintNFT(
-        address to,
-        string memory energyType,
-        uint256 productionDate,
-        uint256 carbonEmissions,
-        uint256 energyEfficiency
-    ) external onlyProducer {
-        uint256 tokenId = renewableEnergyNFTs.length;
-        renewableEnergyNFTs.push(
-            RenewableEnergyNFT({
-                energyType: energyType,
-                productionDate: productionDate,
-                carbonEmissions: carbonEmissions,
-                energyEfficiency: energyEfficiency,
-                price: 0,
-                isListed: false
-            })
-        );
-        _safeMint(to, tokenId);
-        emit NFTMinted(tokenId, energyType, productionDate);
-    }
-
-    function addAIPrediction(uint256 tokenId, uint256 timestamp, uint256 predictionValue) external onlyAdmin {
-        require(_exists(tokenId), "Token ID does not exist");
-        aiPredictions.push(AIPrediction({ tokenId: tokenId, timestamp: timestamp, predictionValue: predictionValue }));
-        emit AIPredictionAdded(tokenId, timestamp, predictionValue);
-    }
-
-    function payTax(uint256 tokenId, uint256 amount) external {
-        require(_exists(tokenId), "Token ID does not exist");
-        address payer = msg.sender;
-        // Perform tax payment logic
-        emit TaxPaid(payer, tokenId, amount);
-    }
-
-    function depositToVault() external payable {
-        vaultBalances[msg.sender] += uint128(msg.value);
-    }
-
-    function withdrawFromVault(uint256 amount) external {
-        require(vaultBalances[msg.sender] >= amount, "Insufficient funds in the vault");
-        vaultBalances[msg.sender] -= uint128(amount);
-        payable(msg.sender).transfer(amount);
-        emit WithdrawnFromVault(msg.sender, amount);
-    }
-
+    // Rest of your contract functions...
+    
     function _baseURI() internal view virtual override returns (string memory) {
         return _baseTokenURI;
     }
