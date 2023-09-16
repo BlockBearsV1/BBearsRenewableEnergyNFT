@@ -31,7 +31,6 @@ contract BBearsRenewableEnergyNFT is ERC721 {
     ) public returns (uint256) {
         require(bytes(_energyType).length > 0, "Energy type must be provided");
         
-        // Create a new NFT
         RenewableEnergyNFT memory newNft = RenewableEnergyNFT({
             energyType: _energyType,
             productionDate: _productionDate,
@@ -41,19 +40,11 @@ contract BBearsRenewableEnergyNFT is ERC721 {
             isListed: false
         });
         
-        // Increment token ID
         _tokenIds.increment();
-        
-        // Get the new token ID
         uint256 newTokenId = _tokenIds.current();
-        
-        // Mint the NFT to the sender's address
         _mint(msg.sender, newTokenId);
-        
-        // Store the NFT in the mapping using the token ID as the key
         nfts[newTokenId] = newNft;
         
-        // Return the new token ID
         return newTokenId;
     }
 
@@ -81,14 +72,12 @@ contract BBearsRenewableEnergyNFT is ERC721 {
             "Not authorized"
         );
         
-        // Approve an address to manage the specified token ID
         _approve(approved, tokenId);
     }
     
     function setApprovalForAll(address operator, bool approved) public override {
         require(operator != msg.sender, "Cannot self-approve");
         
-        // Approve or revoke an address as an operator for all tokens owned by the sender
         setApprovalForAll(operator, approved);
     }
 }
