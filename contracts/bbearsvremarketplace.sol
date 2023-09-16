@@ -40,9 +40,9 @@ contract BBearsVREMarketplace is ReentrancyGuard, AccessControlEnumerable {
     }
 
     function payTax(uint256 tokenId) external payable nonReentrant {
-        require(listings[tokenId].active, "BBearsVREMarketplace: NFT not listed for sale");
-
         Listing storage listing = listings[tokenId];
+        require(listing.active, "BBearsVREMarketplace: NFT not listed for sale");
+
         uint256 adminFee = listing.price.mul(adminFeePercentage).div(100);
         require(msg.value >= listing.price.add(adminFee), "BBearsVREMarketplace: insufficient payment");
 
@@ -58,42 +58,40 @@ contract BBearsVREMarketplace is ReentrancyGuard, AccessControlEnumerable {
     }
 
     function buyNFT(uint256 tokenId) external payable nonReentrant {
-        require(listings[tokenId].active, "BBearsVREMarketplace: NFT not listed for sale");
-
         Listing storage listing = listings[tokenId];
-        
-         require(msg.value >= listing.price, "BBearsVREMarketplace: insufficient payment");
+        require(listing.active, "BBearsVREMarketplace: NFT not listed for sale");
+        require(msg.value >= listing.price, "BBearsVREMarketplace: insufficient payment");
 
-         address payable seller = payable(listing.seller);
-         seller.transfer(listing.price);
+        address payable seller = payable(listing.seller);
+        seller.transfer(listing.price);
 
-         nftContract.updateOwnership(tokenId, msg.sender);
+        nftContract.updateOwnership(tokenId, msg.sender);
          
-         delete listings[tokenId];
-     }
+        delete listings[tokenId];
+    }
 
-     function listNFTForSale(uint256 tokenId, uint256 price) external {
-         require(nftContract.ownerOf(tokenId) == msg.sender, "BBearsVREMarketplace: caller is not the owner of the NFT");
-         require(price > 0, "BBearsVREMarketplace: price must be greater than zero");
+    function listNFTForSale(uint256 tokenId, uint256 price) external {
+        require(nftContract.ownerOf(tokenId) == msg.sender, "BBearsVREMarketplace: caller is not the owner of the NFT");
+        require(price > 0, "BBearsVREMarketplace: price must be greater than zero");
 
-         listings[tokenId] = Listing({
-             seller: msg.sender,
-             price: price,
-             active: true
-         });
-     }
+        listings[tokenId] = Listing({
+            seller: msg.sender,
+            price: price,
+            active: true
+        });
+    }
 
-     function cancelListing(uint256 tokenId) external {
-         require(nftContract.ownerOf(tokenId) == msg.sender, "BBearsVREMarketplace: caller is not the owner of the NFT");
+    function cancelListing(uint256 tokenId) external {
+        require(nftContract.ownerOf(tokenId) == msg.sender, "BBearsVREMarketplace: caller is not the owner of the NFT");
 
-         delete listings[tokenId];
-     }
+        delete listings[tokenId];
+    }
 
-     function getNFTDetails(uint256 tokenId) external view returns (address owner, uint256 price, bool active) {
-         Listing storage listing = listings[tokenId];
+    function getNFTDetails(uint256 tokenId) external view returns (address owner, uint256 price, bool active) {
+        Listing storage listing = listings[tokenId];
          
-         return (nftContract.ownerOf(tokenId), listing.price, listing.active);
-     }
+        return (nftContract.ownerOf(tokenId), listing.price, listing.active);
+    }
 
     function getOwnedNFTs(address owner) external view returns (uint256[] memory) {
         uint256[] memory ownedTokens = nftContract.getOwnedTokens(owner);
