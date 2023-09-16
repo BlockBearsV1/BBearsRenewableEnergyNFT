@@ -1,206 +1,112 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "./BBearsRenewableEnergyNFT.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract BBearsVREMarketplace is ERC721Enumerable, AccessControl {
+contract BBearsVREMarketplace is ReentrancyGuard, AccessControlEnumerable {
     using SafeMath for uint256;
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant PRODUCER_ROLE = keccak256("PRODUCER_ROLE");
 
-    string public constant _name = "BBearsRenewableEnergyNFT";
-    string public constant _symbol = "BBVRE";
-    string private _baseTokenURI = "https://nft.b-bears.com/";
-
-    address payable public admin;
-
-    struct RenewableEnergyNFT {
-        string energyType;
-        uint256 productionDate;
-        uint256 carbonEmissions;
-        uint256 energyEfficiency;
+    struct Listing {
+        address seller;
         uint256 price;
-        bool isListed;
+        bool active;
     }
 
-    mapping(uint256 => RenewableEnergyNFT) public renewableEnergyNFTs;
+    mapping(uint256 => Listing) private listings;
 
-    event NFTMintedEvent(
-        uint256 indexed tokenId,
-        string energyType,
-        uint256 productionDate
-    );
-    event AIPredictionAddedEvent(
-        uint256 indexed tokenId,
-        uint256 timestamp,
-        uint256 predictionValue
-    );
-    event TaxPaidEvent(address payer, uint256 tokenId, uint256 amount);
-    event WithdrawnFromVaultEvent(address user, uint256 amount);
-    event NFTListedEvent(uint256 indexed tokenId, uint256 price);
-    event NFTPurchasedEvent(
-        uint256 indexed tokenId,
-        address buyer,
-        address seller,
-        uint256 price
-    );
+    BBearsRenewableEnergyNFT private nftContract;
+    uint256 public adminFeePercentage;
 
-    struct AIPrediction {
-        uint256 tokenId;
-        uint256 timestamp;
-        uint256 predictionValue;
-    }
-
-    mapping(uint256 => AIPrediction) public aiPredictions;
-    mapping(address => uint256) public vaultBalances;
-
-    constructor(string memory baseURI) ERC721(_name, _symbol) {
-        _baseTokenURI = baseURI;
-        admin = payable(msg.sender); // Set the admin to the contract deployer
+    constructor(address _nftContractAddress, uint256 _adminFeePercentage) {
+        nftContract = BBearsRenewableEnergyNFT(_nftContractAddress);
+        adminFeePercentage = _adminFeePercentage;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
-        _setupRole(PRODUCER_ROLE, msg.sender);
     }
 
     modifier onlyAdmin() {
-        require(hasRole(ADMIN_ROLE, msg.sender), "Not authorized as admin");
+        require(hasRole(ADMIN_ROLE, msg.sender), "BBearsVREMarketplace: must have admin role");
         _;
     }
 
-    modifier onlyProducer() {
-        require(
-            hasRole(PRODUCER_ROLE, msg.sender),
-            "Not authorized as producer"
-        );
-        _;
+    function setAdminFeePercentage(uint256 _percentage) external onlyAdmin {
+        require(_percentage >= 0 && _percentage <= 100, "BBearsVREMarketplace: invalid percentage");
+        adminFeePercentage = _percentage;
     }
 
-    /**
-     * @dev Mint a new NFT.
-     */
-    function mintNFT(
-        address to,
-        string memory energyType,
-        uint256 productionDate,
-        uint256 carbonEmissions,
-        uint256 energyEfficiency,
-        uint256 tokenId
-    ) external onlyProducer {
-        require(!_exists(tokenId), "Token ID already exists");
-        renewableEnergyNFTs[tokenId] = RenewableEnergyNFT(
-            energyType,
-            productionDate,
-            carbonEmissions,
-            energyEfficiency,
-            0,
-            false
-        );
-        _safeMint(to, tokenId);
-        emit NFTMintedEvent(tokenId, energyType, productionDate);
-    }
+    function payTax(uint256 tokenId) external payable nonReentrant {
+        require(listings[tokenId].active, "BBearsVREMarketplace: NFT not listed for sale");
 
-    /**
-     * @dev Add an AI prediction for a specific token.
-     */
-    function addAIPrediction(
-        uint256 tokenId,
-        uint256 timestamp,
-        uint256 predictionValue
-    ) external onlyAdmin {
-        require(_exists(tokenId), "Token ID does not exist");
-        aiPredictions[tokenId] = AIPrediction(
-            tokenId,
-            timestamp,
-            predictionValue
-        );
-        emit AIPredictionAddedEvent(tokenId, timestamp, predictionValue);
-    }
+        Listing storage listing = listings[tokenId];
+        uint256 adminFee = listing.price.mul(adminFeePercentage).div(100);
+        require(msg.value >= listing.price.add(adminFee), "BBearsVREMarketplace: insufficient payment");
 
-    /**
-     * @dev Pay taxes for a specific token.
-     */
-    function payTax(uint256 tokenId, uint256 amount) external payable {
-        require(_exists(tokenId), "Token ID does not exist");
-        address payer = msg.sender;
-        // Add tax payment logic here
-        emit TaxPaidEvent(payer, tokenId, amount);
-    }
-
-    /**
-     * @dev Deposit ETH to the vault.
-     */
-    function depositToVault() external payable {
-        vaultBalances[msg.sender] = vaultBalances[msg.sender].add(msg.value);
-    }
-
-    /**
-     * @dev Withdraw ETH from the vault.
-     */
-    function withdrawFromVault(uint256 amount) external {
-        require(vaultBalances[msg.sender] >= amount, "Insufficient funds in the vault");
-        vaultBalances[msg.sender] = vaultBalances[msg.sender].sub(amount);
-        payable(msg.sender).transfer(amount);
-        emit WithdrawnFromVaultEvent(msg.sender, amount);
-    }
-
-    /**
-     * @dev Set the base URI for token metadata.
-     */
-    function setBaseURI(string memory baseURI) external onlyAdmin {
-        require(bytes(baseURI).length > 0, "Base URI must not be empty");
-        _baseTokenURI = baseURI;
-    }
-
-    /**
-     * @dev List an NFT for sale.
-     */
-    function listNFTForSale(uint256 tokenId, uint256 price)
-        external
-        onlyProducer
-    {
-        require(ownerOf(tokenId) == msg.sender, "Only the owner can list the NFT for sale");
-        require(!renewableEnergyNFTs[tokenId].isListed, "NFT is already listed for sale");
-        renewableEnergyNFTs[tokenId].isListed = true;
-        renewableEnergyNFTs[tokenId].price = price;
-        emit NFTListedEvent(tokenId, price);
-    }
-
-    /**
-     * @dev Purchase an NFT.
-     */
-    function purchaseNFT(uint256 tokenId) external payable {
-        require(renewableEnergyNFTs[tokenId].isListed, "NFT is not listed for sale");
-        require(msg.value >= renewableEnergyNFTs[tokenId].price, "Insufficient payment");
-        address seller = ownerOf(tokenId);
-        address buyer = msg.sender;
-        uint256 price = renewableEnergyNFTs[tokenId].price;
-        // Calculate the 0.7% transaction fee for the admin
-        uint256 adminFee = (price * 7) / 1000; // 0.7% fee
-        // Transfer ownership
-        transferFrom(seller, buyer, tokenId);
-        // Update NFT status
-        renewableEnergyNFTs[tokenId].isListed = false;
-        renewableEnergyNFTs[tokenId].price = 0;
-        // Transfer payment to seller minus admin fee
-        uint256 sellerAmount = price - adminFee;
-        payable(seller).transfer(sellerAmount);
-        // Transfer admin fee to the admin
+        address payable seller = payable(listing.seller);
+        seller.transfer(listing.price);
+        
+        address payable admin = payable(getRoleMember(ADMIN_ROLE, 0));
         admin.transfer(adminFee);
-        emit NFTPurchasedEvent(tokenId, buyer, seller, price);
+
+        nftContract.updateOwnership(tokenId, msg.sender);
+        
+        delete listings[tokenId];
     }
 
-    /**
-     * @dev Implementation of IERC165.
-     */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721Enumerable, AccessControl)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
+    function buyNFT(uint256 tokenId) external payable nonReentrant {
+        require(listings[tokenId].active, "BBearsVREMarketplace: NFT not listed for sale");
+
+        Listing storage listing = listings[tokenId];
+        
+         require(msg.value >= listing.price, "BBearsVREMarketplace: insufficient payment");
+
+         address payable seller = payable(listing.seller);
+         seller.transfer(listing.price);
+
+         nftContract.updateOwnership(tokenId, msg.sender);
+         
+         delete listings[tokenId];
+     }
+
+     function listNFTForSale(uint256 tokenId, uint256 price) external {
+         require(nftContract.ownerOf(tokenId) == msg.sender, "BBearsVREMarketplace: caller is not the owner of the NFT");
+         require(price > 0, "BBearsVREMarketplace: price must be greater than zero");
+
+         listings[tokenId] = Listing({
+             seller: msg.sender,
+             price: price,
+             active: true
+         });
+     }
+
+     function cancelListing(uint256 tokenId) external {
+         require(nftContract.ownerOf(tokenId) == msg.sender, "BBearsVREMarketplace: caller is not the owner of the NFT");
+
+         delete listings[tokenId];
+     }
+
+     function getNFTDetails(uint256 tokenId) external view returns (address owner, uint256 price, bool active) {
+         Listing storage listing = listings[tokenId];
+         
+         return (nftContract.ownerOf(tokenId), listing.price, listing.active);
+     }
+
+    function getOwnedNFTs(address owner) external view returns (uint256[] memory) {
+        uint256[] memory ownedTokens = nftContract.getOwnedTokens(owner);
+        uint256[] memory result = new uint256[](ownedTokens.length);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < ownedTokens.length; i++) {
+            if (listings[ownedTokens[i]].active) {
+                result[count] = ownedTokens[i];
+                count++;
+            }
+        }
+
+        return result;
     }
 }
